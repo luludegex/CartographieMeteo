@@ -1,4 +1,4 @@
-# CartographieMeteo ( le programme est dans "essaycarte")
+# CartographieMeteo ( le programme en lui-même est dans "essaycarte")
 
 # Projet De Cartographie NSI
 Présentation Générale:
