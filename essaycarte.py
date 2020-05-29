@@ -5,7 +5,6 @@ import json
 
 
 
-
 def ajouterMarkers(map, markers, donnees):
     couleurChaud = "orange"
     couleurFroid = "blue"
@@ -13,47 +12,65 @@ def ajouterMarkers(map, markers, donnees):
     iconFroid = "cloud"
     for marker in markers:
         nom, latitude, longitude, station = marker['Nom'], marker['Latitude'], marker['Longitude'], marker['numer_sta']
-        donneesUneStation = csv.filtrerLigne(donnees,'numer_sta', station) 
-        if len(donneesUneStation) > 0:
-            donneesUneStation = conversion(donneesUneStation)
-            chart = templateJson(donneesUneStation, nom )
-            moyenneStation = moyenne(donneesUneStation)
-            if moyenneStation >= moyenneGlobale:
-                couleur = couleurChaud
-                icon = iconChaud
+        position = float(marker["Latitude"])
+        positionLong = float(marker["Longitude"])
+        if position > 18 and positionLong > -56:
+            donneesUneStation = csv.filtrerLigne(donnees,'numer_sta', station) 
+            if len(donneesUneStation) > 0:
+                donneesUneStation = conversion(donneesUneStation)
+                moyenneStation = moyenne(donneesUneStation)
+                chart = templateJson(donneesUneStation, nom, moyenneStation )
+                if moyenneStation >= moyenneGlobale:
+                    couleur = couleurChaud
+                    icon = iconChaud
+                else:
+                    couleur = couleurFroid
+                    icon = iconFroid
+                icon = folium.Icon(icon=icon, color = couleur)
+                popup = folium.Popup().add_child(folium.VegaLite(chart), name = nom)
+                folium.Marker(location=[latitude,longitude],
+                    popup = popup,
+                    icon = icon
+                ).add_to(map)
             else:
-                couleur = couleurFroid
-                icon = iconFroid
-            icon = folium.Icon(icon=icon, color = couleur)
-            popup = folium.Popup().add_child(folium.VegaLite(chart))
-            folium.Marker(location=[latitude,longitude],
-                popup = popup,
-                icon = icon
-            ).add_to(map)
-        else:
-            print("pas  de donées pour la station {}".format(nom))
-        
-        print("Station: {} - lat, long [{},{}] - temp. moy. : {}".format(nom, latitude, longitude, moyenneStation))
-        
-
+                print("pas  de donées pour la station {}".format(nom))
             
-                
+            print("Station: {} - lat, long [{},{}] - temp. moy. : {}".format(nom, latitude, longitude, moyenneStation))
+        
 
-def templateJson(data, titre):
+                       
+
+def templateJson(data, titre, moyenne):
 
     jsonFile = {
+        "contains":"padding",
+        "type": "fit",
         "description": "Carte des températures",
+        "title":titre,
         "data": {
             "values": data
         },
-        "mark": "line",
-        "encoding": {
-            "x": {"field":"date", "type": "temporal", "axis": {"labelAngle": 0}, "timeUnit": "yearmonthdayhoursminutessecondes"},
-            "y": {"field": "t", "type": "quantitative", "title": "Température"} 
-            
+    
+        "mark":"line",
+        "interpolate": "step-after",
+        "stroke":"#008b8b",
+        "encoding": { 
+            "x": {
+                "field":"date",
+                "type": "temporal",
+                "timeUnit": "yearmonthdayhoursminutessecondes",
+                "scale": {"type": "utc"},
+                "axis": { "labelAngle": 15 },
+                "step": "number",
+                "title":"Date"
+            },
+            "y": {
+                "field":"t",
+                "type": "quantitative",
+                "title": "Température"
+            } 
         }
-    }  
-    dump = json.dumps(jsonFile)
+    }
     return jsonFile 
 
 def conversion(inputData):
@@ -94,24 +111,39 @@ def moyenne(temperatures):
     return moyenneTemperatures
 
 
+def moyenneGlobale(donneesCoordonnees, donneesTemperature):
+    stationsAprendreEnCompte =[]
+    for station in donneesCoordonnees:
+        numeroStation = station["numer_sta"]
+        latitudeStation = float(station["Latitude"])
+        longitudeStation = float(station["Longitude"])
+        temperatures = extractionTemperatures(csv.filtrerLigne(donneesTemperature, "numer_sta", numeroStation))
+        if latitudeStation >= 18 and longitudeStation > -56:
+            for numero in temperatures:
+                stationsAprendreEnCompte.append(numero)
+    moyenneDesStations = sum(stationsAprendreEnCompte)/len(stationsAprendreEnCompte)-273.15
+    return moyenneDesStations
+     
+
+
+
 m = folium.Map(location = [47.059167, 2.359833], zoom_start=5)
 
 tablePostesDonnees = csv.importCSV('Postes_Données.csv')
-
 critèrePostesDonnes = ['numer_sta','Nom','Latitude','Longitude','Altitude']
-
 stationsMarkers = csv.filtrerColonne(tablePostesDonnees, critèrePostesDonnes) 
 
+
 tableauDonneesCsv = importCSV('Données_Février2020.csv')
-
 listeCriteres = ['numer_sta', 't', 'date']
-
 tableauDonneesCsvFiltrees = csv.filtrerColonne(tableauDonneesCsv, listeCriteres) 
 
-moyenneGlobale = moyenne(tableauDonneesCsvFiltrees)-273.15
+
+moyenneGlobale = moyenneGlobale(stationsMarkers, tableauDonneesCsvFiltrees)
+
+
 
 ajouterMarkers(m, stationsMarkers, tableauDonneesCsvFiltrees)
-
 m.save('carte_meteo.html')
 
 
