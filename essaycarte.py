@@ -19,7 +19,7 @@ def ajouterMarkers(map, markers, donnees):
             if len(donneesUneStation) > 0:
                 donneesUneStation = conversion(donneesUneStation)
                 moyenneStation = moyenne(donneesUneStation)
-                chart = templateJson(donneesUneStation, nom, moyenneStation )
+                fichierJson = templateJson(donneesUneStation, nom, moyenneStation )
                 if moyenneStation >= moyenneGlobale:
                     couleur = couleurChaud
                     icon = iconChaud
@@ -27,7 +27,7 @@ def ajouterMarkers(map, markers, donnees):
                     couleur = couleurFroid
                     icon = iconFroid
                 icon = folium.Icon(icon=icon, color = couleur)
-                popup = folium.Popup().add_child(folium.VegaLite(chart), name = nom)
+                popup = folium.Popup().add_child(folium.VegaLite(fichierJson), name = nom)
                 folium.Marker(location=[latitude,longitude],
                     popup = popup,
                     icon = icon
